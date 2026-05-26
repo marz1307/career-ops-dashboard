@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="refresh" content="21600" />
+<title>Marvis Career-Ops Dashboard</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --border:#262b35; --fg:#e6e8ec; --muted:#8a94a6;
+    --accent:#d4471f; --good:#34d399; --warn:#fbbf24; --bad:#ef4444; --blue:#60a5fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px}
+  h1{font-size:22px;font-weight:600;margin:0 0 4px}
+  h1 .sub{font-weight:400;color:var(--muted);font-size:14px;margin-left:8px}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:20px 0 8px}
+  .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:14px}
+  .kpi{font-size:28px;font-weight:600;line-height:1}
+  .kpi .label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-top:4px}
+  .bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--border);margin:6px 0 10px}
+  .bar span{display:block}
+  .stage-pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .s1{background:#1e2530;color:#9aa3b2}
+  .s2{background:#3f3a1c;color:#fcd34d}
+  .s3{background:#2b3a1a;color:#a3e635}
+  .s4{background:#1a3a36;color:#34d399}
+  .sNot{background:#2a1f23;color:#a3766e}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  td a{color:var(--blue);text-decoration:none}
+  td a:hover{text-decoration:underline}
+  .score{font-weight:600}
+  .score-92,.score-91,.score-90,.score-89,.score-88,.score-87,.score-86,.score-85{color:var(--good)}
+  .score-84,.score-83,.score-82,.score-81,.score-80,.score-79,.score-78,.score-77,.score-76,.score-75{color:var(--warn)}
+  .score-low{color:var(--muted)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;background:var(--border);color:var(--muted);margin-right:4px}
+  .pill.invite{background:#1a3a36;color:var(--good)}
+  .pill.reject{background:#2a1a1a;color:var(--bad)}
+  .pill.maybe{background:#3a341a;color:var(--warn)}
+  .meta{color:var(--muted);font-size:12px;margin-top:4px}
+  .footer{margin-top:24px;color:var(--muted);font-size:11px;text-align:center}
+  .footer code{background:var(--panel);padding:2px 6px;border-radius:4px;color:var(--fg)}
+  .sparkline{display:flex;gap:2px;align-items:flex-end;height:32px;margin-top:6px}
+  .sparkline div{flex:1;background:var(--accent);border-radius:2px;min-height:2px;transition:opacity .2s}
+  .sparkline div:hover{opacity:0.7}
+  .empty{color:var(--muted);font-style:italic;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Marvis Career-Ops Dashboard<span class="sub" id="ts"></span></h1>
+
+<div class="row" id="kpis"></div>
+
+<h2>Pipeline by stage</h2>
+<div class="card" id="stages"></div>
+
+<h2>Source-portal mix</h2>
+<div class="card" id="portals"></div>
+
+<div class="row">
+  <div class="card">
+    <h2 style="margin-top:0">Top 10 Stage 3 — Drafted, ready to send</h2>
+    <table><thead><tr><th>App</th><th>Score</th><th>Company</th><th>Position</th><th>Country</th><th>Verdict</th><th>Files</th></tr></thead><tbody id="tbl-drafted"></tbody></table>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Top 10 Stage 2 — Triaged, awaiting draft</h2>
+    <table><thead><tr><th>App</th><th>Score</th><th>Company</th><th>Position</th><th>Country</th><th>Verdict</th></tr></thead><tbody id="tbl-triaged"></tbody></table>
+  </div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <h2 style="margin-top:0">Last 7 days intake</h2>
+    <div class="sparkline" id="sparkline"></div>
+    <div class="meta" id="sparkline-labels"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Pace</h2>
+    <div id="pace"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">Today's routine runs</h2>
+    <div id="trace"></div>
+  </div>
+</div>
+
+<h2>Stale portals (≥3 consecutive scan failures)</h2>
+<div class="card" id="stale"></div>
+
+<div class="footer">
+  Generated <span id="gen"></span> · regenerate with <code>node build-dashboard.mjs</code>
+</div>
+</div>
+
+<script type="application/json" id="snapshot">{"generated_at":"2026-05-26T09:49:38.152Z","database_id":"eace68a2-e454-4a6d-ab9d-ed5dfcd65c72","summary":{"total_rows":355,"by_stage":{"3. Drafted":50,"1. Discovered":280,"Not pursuing":17,"2. Triaged":8},"by_portal":{"Lever":5,"Welcome to the Jungle":42,"Xing":145,"eFinancialCareers":8,"Stepstone":106,"Other":4,"LinkedIn":16,"Indeed":10,"Greenhouse":5,"Company site":14},"by_country":{"Remote":3,"Germany":290,"UK":39,"EU (other)":8,"Netherlands":14,"Austria":1},"by_day_last_7":{"2026-05-26":293,"2026-05-25":62,"2026-05-24":0,"2026-05-23":0,"2026-05-22":0,"2026-05-21":0,"2026-05-20":0},"recruiter_sim_distribution":{"INVITE":43,"MAYBE":14,"REJECT":7,"none":291},"top_drafted":[{"id":"36b68966-61a3-8151-b602-c9e3c6da2d2e","page_url":"https://www.notion.so/Anthropic-36b6896661a38151b602c9e3c6da2d2e","application_id":"APP-85","title":"Anthropic","stage":"3. Drafted","match_score":97,"country":"UK","location":"London, UK","job_url":"https://job-boards.greenhouse.io/anthropic/jobs/5156057008","position":["Data Engineer"],"source_portal":"Greenhouse","language":"EN","company_tier":null,"agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to this row's Resume / Cover Letter file properties. Form answers drafted at output/form-answers/085-anthropic-2026-05-26.md (no Form answers pr","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-8197-bc78-c4624d01989d","page_url":"https://www.notion.so/Spotify-36b6896661a38197bc78c4624d01989d","application_id":"APP-51","title":"Spotify","stage":"3. Drafted","match_score":96,"country":"EU (other)","location":"Stockholm","job_url":"https://jobs.lever.co/spotify/08d82da1-0c72-44d1-91eb-7fa22dee3d39","position":["Analytics Engineer"],"source_portal":"Lever","language":null,"company_tier":"Tier 2","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/051-spotify-2026-05-26.md (no Form-answers property). EN (AE archetype); JD fetche","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-812d-99f2-d88a0e23a874","page_url":"https://www.notion.so/Zattoo-36b6896661a3812d99f2d88a0e23a874","application_id":"APP-151","title":"Zattoo","stage":"3. Drafted","match_score":94,"country":"Germany","location":"Berlin","job_url":"https://www.xing.com/jobs/berlin-big-data-analyst-153704775","position":["Data Analyst"],"source_portal":"Xing","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/151-zattoo-2026-05-26.md (no Form-answers property). EN (AE archetype, role is AE/","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-8195-8c02-da473a8fafc8","page_url":"https://www.notion.so/InCycling-GmbH-36b6896661a381958c02da473a8fafc8","application_id":"APP-149","title":"InCycling GmbH","stage":"3. Drafted","match_score":94,"country":"Germany","location":"Berlin","job_url":"https://www.xing.com/jobs/berlin-data-engineer-analytics-engineer-153068956","position":["Analytics Engineer"],"source_portal":"Xing","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/149-incycling-gmbh-2026-05-26.md (no Form-answers property). EN (DE archetype, fir","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-8150-b3c5-f8b9e8781cd4","page_url":"https://www.notion.so/Bees-Bears-36b6896661a38150b3c5f8b9e8781cd4","application_id":"APP-77","title":"Bees & Bears","stage":"3. Drafted","match_score":94,"country":"Germany","location":"Berlin","job_url":"https://bees-bears-gmbh.jobs.personio.com/job/2619367","position":["Data Engineer"],"source_portal":"Company site","language":"EN","company_tier":null,"agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/077-bees-bears-2026-05-26.md (no Form-answers property). EN (DE archetype, first d","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-81dd-9ed0-d0c784cafae0","page_url":"https://www.notion.so/Eraneos-36b6896661a381dd9ed0d0c784cafae0","application_id":"APP-178","title":"Eraneos","stage":"3. Drafted","match_score":93,"country":"Germany","location":"Hamburg","job_url":"https://www.xing.com/jobs/hamburg-analytics-engineer-all-genders-154397540","position":["Analytics Engineer"],"source_portal":"Xing","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nLebenslauf (DE, photo) + Anschreiben (DE) uploaded to Resume / Cover Letter. Form answers (German) at output/form-answers/178-eraneos-2026-05-26.md (no Form-answers proper","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"DE-tailored","cl_variant":"DE"},{"id":"36b68966-61a3-8105-917d-c029761bf657","page_url":"https://www.notion.so/Getsafe-36b6896661a38105917dc029761bf657","application_id":"APP-179","title":"Getsafe","stage":"3. Drafted","match_score":92,"country":"Germany","location":"Heidelberg","job_url":"https://www.xing.com/jobs/heidelberg-analytics-engineer-153630396","position":["Analytics Engineer"],"source_portal":"Xing","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/179-getsafe-2026-05-26.md (no Form-answers property). EN (AE archetype); JD fetche","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-8100-b275-e7fddbf8e0a7","page_url":"https://www.notion.so/Zalando-36b6896661a38100b275e7fddbf8e0a7","application_id":"APP-62","title":"Zalando","stage":"3. Drafted","match_score":91,"country":"Germany","location":"Berlin / Dublin","job_url":"https://jobs.zalando.com/en/jobs/2723045-Data-Engineer---Partner-Tech","position":["Data Engineer"],"source_portal":"Company site","language":"EN","company_tier":"Tier 1 (Target)","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/062-zalando-2026-05-26.md (no Form-answers property). EN role (English JD, Helsink","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"},{"id":"36b68966-61a3-81e6-b910-ce900d83e11d","page_url":"https://www.notion.so/Jobriver-HR-Service-36b6896661a381e6b910ce900d83e11d","application_id":"APP-148","title":"Jobriver HR Service","stage":"3. Drafted","match_score":90,"country":"Germany","location":"Berlin","job_url":"https://www.xing.com/jobs/berlin-data-engineer-bereich-marketing-analytics-153733358","position":["Data Engineer"],"source_portal":"Xing","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/148-jobriver-hr-service-2026-05-26.md (no Form-answers property). DE role (German ","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"DE-tailored","cl_variant":"DE"},{"id":"36b68966-61a3-81f8-9598-cc5f87f80e7f","page_url":"https://www.notion.so/Zattoo-Deutschland-GmbH-36b6896661a381f89598cc5f87f80e7f","application_id":"APP-325","title":"Zattoo Deutschland GmbH","stage":"3. Drafted","match_score":89,"country":"Germany","location":"Berlin","job_url":"https://www.stepstone.de/stellenangebote--Big-Data-Analyst-Berlin-Zattoo-Deutschland-GmbH--13956616-inline.html?rltr=4_4_25_seorl_m_0_0_0_0_1_0","position":["Data Analyst"],"source_portal":"Stepstone","language":null,"company_tier":"Tier 3","agent_run_id":"auto-draft-2026-05-26-2130","fit_notes_preview":"[auto-draft 2026-05-26-2130]\nCV + cover letter uploaded to Resume / Cover Letter. Form answers at output/form-answers/325-zattoo-deutschland-gmbh-2026-05-26.md (no Form-answers property). EN role (fit","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":1,"cover_letter_files":1,"cv_variant":"EN-tailored","cl_variant":"EN"}],"top_triaged_pending":[{"id":"36b68966-61a3-81c9-9d60-c46f6dac08b3","page_url":"https://www.notion.so/Trade-Republic-36b6896661a381c99d60c46f6dac08b3","application_id":"APP-98","title":"Trade Republic","stage":"2. Triaged","match_score":79,"country":"Germany","location":"Berlin","job_url":"https://www.welcometothejungle.com/en/companies/trade-republic/jobs/data-scientist_berlin_hm4ocbpp","position":["Data Scientist"],"source_portal":"Welcome to the Jungle","language":"EN","company_tier":null,"agent_run_id":"auto-eval-2026-05-25-2355","fit_notes_preview":"Strongest fit is the software-engineering-first framing (TDD, CI/CD, productionising ML) plus SQL/Python scientific-stack ML, which matches Marvis's CI-gated dbt/pytest discipline and tabular ML, but ","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"MAYBE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-8126-ba2e-fabeb84565c1","page_url":"https://www.notion.so/ALDI-Einkauf-SE-Co-oHG-36b6896661a38126ba2efabeb84565c1","application_id":"APP-232","title":"ALDI Einkauf SE & Co. oHG","stage":"2. Triaged","match_score":78,"country":"Germany","location":"Essen","job_url":"https://www.stepstone.de/stellenangebote--Business-Intelligence-Engineer-m-w-d-Marketing-Loyalty-Analytics-Essen-ALDI-Einkauf-SE-Co-oHG--13986626-inline.html?rltr=21_21_25_seorl_s_0_0_0_0_0_0","position":["BI Engineer"],"source_portal":"Stepstone","language":null,"company_tier":"Tier 3","agent_run_id":"auto-eval-2026-05-25-2100","fit_notes_preview":"English-only language requirement is the big positive for a DACH role, hybrid in Essen with 3 to 5 years and R, Python, SQL plus Power BI. tech 3, scope 3, seniority 4, DACH 5, industry 4, growth 4, c","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"MAYBE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-813c-8729-c94519eb5c7d","page_url":"https://www.notion.so/Hamburger-Energienetze-GmbH-36b6896661a3813c8729c94519eb5c7d","application_id":"APP-224","title":"Hamburger Energienetze GmbH","stage":"2. Triaged","match_score":78,"country":"Germany","location":"Hamburg","job_url":"https://www.stepstone.de/stellenangebote--Data-Analytics-Engineer-Analystin-a-Hamburg-Hamburger-Energienetze-GmbH--13850468-inline.html?rltr=5_5_25_seorl_m_0_0_0_0_0_0","position":["Analytics Engineer"],"source_portal":"Stepstone","language":null,"company_tier":"Tier 3","agent_run_id":"auto-eval-2026-05-25-2100","fit_notes_preview":"Good Analytics Engineer fit: SQL, Python, PySpark, Databricks and lakehouse modelling, though it leans heavily on Power BI reporting and KPI delivery rather than pure pipeline ownership. Tech 4, scope","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"MAYBE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-81c8-8e45-d8400d30328a","page_url":"https://www.notion.so/Undisclosed-eFinancialCareers-36b6896661a381c88e45d8400d30328a","application_id":"APP-100","title":"Undisclosed (eFinancialCareers)","stage":"2. Triaged","match_score":78,"country":"UK","location":"Liverpool, UK","job_url":"https://www.efinancialcareers.de/jobs-United_Kingdom-Liverpool-Data_Scientist.id24294642","position":["Data Scientist"],"source_portal":"eFinancialCareers","language":"EN","company_tier":null,"agent_run_id":"auto-eval-2026-05-25-2355","fit_notes_preview":"Strong fit: Python/R/SQL plus Power BI plus ML plus data warehousing/ETL plus cloud (Azure/AWS/GCP) maps almost one to one onto Marvis's core, and the role mixes predictive modelling with data-model a","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-81ab-8aab-f0363ce1b990","page_url":"https://www.notion.so/Noxtua-AG-36b6896661a381ab8aabf0363ce1b990","application_id":"APP-306","title":"Noxtua AG","stage":"2. Triaged","match_score":77,"country":"Germany","location":"Berlin, BE, Deutschland","job_url":"https://t.gohiring.com/h/91147681b7ab3eadfab386da94511e560ed92acde7b62d44947d61b5124fb038?source=Indeed","position":["Data Engineer"],"source_portal":"Indeed","language":null,"company_tier":"Tier 3","agent_run_id":"auto-eval-2026-05-25-2335","fit_notes_preview":"Good fit: English-only Data Engineer at a funded legal-AI scaleup, Python ETL + Docker/CI/CD/Git at the 2yr band, 100% remote with German residence (relocation ok) — language is C2 English not German,","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-817b-9d96-d854cb21c048","page_url":"https://www.notion.so/Obungi-GmbH-36b6896661a3817b9d96d854cb21c048","application_id":"APP-228","title":"Obungi GmbH","stage":"2. Triaged","match_score":77,"country":"Germany","location":"Hamburg, Kiel, Bremen, Lübeck, Lüneburg","job_url":"https://www.stepstone.de/stellenangebote--Data-Analytics-Engineer-m-w-d-Hamburg-Kiel-Bremen-Luebeck-Lueneburg-Obungi-GmbH--13404444-inline.html?rltr=9_9_25_seorl_m_0_0_0_0_0_0","position":["Analytics Engineer"],"source_portal":"Stepstone","language":null,"company_tier":"Tier 3","agent_run_id":"auto-eval-2026-05-25-2335","fit_notes_preview":"Strong AE fit at a top Microsoft data/analytics partner — Microsoft Fabric, Databricks, Spark/Delta, Power BI, Python/SQL, Git/CI-CD, data modelling and governance, and explicitly 'offen für jedes Kar","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"MAYBE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-812e-affd-d20308533aa9","page_url":"https://www.notion.so/Compare-The-Market-36b6896661a3812eaffdd20308533aa9","application_id":"APP-314","title":"Compare The Market","stage":"2. Triaged","match_score":76,"country":"UK","location":"London, ENG, United Kingdom","job_url":"https://jobs.comparethemarketcareers.com/en/job/100231","position":["Data Engineer"],"source_portal":"Indeed","language":null,"company_tier":"Tier 3","agent_run_id":"apify-bulk-scan-2026-05-25-1300","fit_notes_preview":"Page rendered as a thin JS shell so detail is limited, but it is a live London hybrid Data Engineer post at an insurtech aggregator with no expired or 404 signals, evaluated on title, portal and role ","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"MAYBE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null},{"id":"36b68966-61a3-81a5-a591-e68f8b4d174e","page_url":"https://www.notion.so/transcide-GmbH-36b6896661a381a5a591e68f8b4d174e","application_id":"APP-229","title":"transcide GmbH","stage":"2. Triaged","match_score":76,"country":"Germany","location":"Oldenburg, Deutschland","job_url":"https://www.stepstone.de/stellenangebote--Analytics-Engineer-m-w-d-Oldenburg-Deutschland-transcide-GmbH--12833051-inline.html?rltr=10_10_25_seorl_m_0_0_0_0_0_0","position":["Analytics Engineer"],"source_portal":"Stepstone","language":null,"company_tier":"Tier 3","agent_run_id":"auto-eval-2026-05-25-2249","fit_notes_preview":"Strong BI stack fit (Python, SQL, Power BI, data modelling, large-volume analysis) and remote-possible mid-level role at a small data consultancy. Tech 4/5, scope 3.5/5, seniority 4.5/5, DACH 4/5, ind","discovered_date":"2026-05-25","apply_date":null,"recruiter_sim_verdict":"INVITE","resume_files":0,"cover_letter_files":0,"cv_variant":null,"cl_variant":null}]},"wrapper_trace":{"available":true,"exits_today":[{"time":"2026-05-26 00:02:45","routine":"auto-eval","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 00:34:41","routine":"auto-eval","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 00:39:07","routine":"auto-eval","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 01:03:49","routine":"auto-draft","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 01:12:11","routine":"auto-draft","exit_code":"1","timed_out":"False","contract_valid":"False"},{"time":"2026-05-26 05:34:14","routine":"morning-scan","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 06:12:38","routine":"lunchtime-scan","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 06:16:34","routine":"apify-bulk-scan","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 06:20:37","routine":"lunchtime-scan","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 06:39:24","routine":"auto-eval","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 07:06:46","routine":"system-eval","exit_code":"4","timed_out":"False","contract_valid":"False"},{"time":"2026-05-26 07:59:40","routine":"auto-draft","exit_code":"1","timed_out":"False","contract_valid":"False"},{"time":"2026-05-26 09:00:17","routine":"auto-interview-prep","exit_code":"1","timed_out":"False","contract_valid":"False"},{"time":"2026-05-26 09:46:25","routine":"system-eval","exit_code":"4","timed_out":"False","contract_valid":"False"},{"time":"2026-05-26 09:56:03","routine":"auto-draft","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 09:56:58","routine":"auto-interview-prep","exit_code":"0","timed_out":"False","contract_valid":"True"},{"time":"2026-05-26 09:58:41","routine":"system-eval","exit_code":"4","timed_out":"False","contract_valid":"False"}]},"stale_portals":{"available":true,"stale":[{"name":"Forto","consecutive":3,"last_error":"HTTP 404: {\"ok\":false,\"error\":\"Document not found\"}","last_seen_ok":null},{"name":"Factorial","consecutive":3,"last_error":"HTTP 404: {\"status\":404,\"error\":\"Job not found\"}","last_seen_ok":null},{"name":"Travelperk","consecutive":3,"last_error":"HTTP 404: Not Found","last_seen_ok":null},{"name":"Clarity AI","consecutive":3,"last_error":"HTTP 404: {\"ok\":false,\"error\":\"Document not found\"}","last_seen_ok":null},{"name":"Tinybird","consecutive":3,"last_error":"HTTP 404: Not Found","last_seen_ok":null}]},"pace_summary":{"today":"2026-05-26","applied_today":0,"applied_last_7_days":[0,0,0,0,0,0,0],"rolling_7_day_sum":0,"rolling_7_day_avg_per_day":0,"target_per_day":29,"target_per_week":203,"alarm_threshold_per_day":25,"status":"warning","consecutive_low_days":7,"suggestion":"[CACHE STALE — data/applications.md last modified 64.3h ago (>36h threshold) — local cache likely out of sync with Notion] Downgraded alarm to warning. Apply pace below 25/day for 7 consecutive days. Expand fan-out: broaden role-family filter in portals.yml (add adjacent titles), enable extra EMEA countries in location_filter, or relax title_filter.negative to surface borderline roles.","cache_staleness":{"stale":true,"reason":"data/applications.md last modified 64.3h ago (>36h threshold) — local cache likely out of sync with Notion","mtime_iso":"2026-05-23T17:30:32.534Z","hours_since_mtime":64.3},"window_adherence":{"total_applied_7d":0,"preferred_day_count":0,"acceptable_day_count":0,"avoid_day_count":0,"adherence_pct":null,"note":"no applied rows in last 7 days"}}}</script>
+<script>
+(function(){
+  const s = JSON.parse(document.getElementById("snapshot").textContent);
+  const summary = s.summary;
+  const $ = id => document.getElementById(id);
+
+  const ts = new Date(s.generated_at).toLocaleString();
+  $("ts").textContent = " · snapshot " + ts;
+  $("gen").textContent = ts;
+
+  // KPIs
+  const stage1 = summary.by_stage["1. Discovered"] || 0;
+  const stage2 = summary.by_stage["2. Triaged"] || 0;
+  const stage3 = summary.by_stage["3. Drafted"] || 0;
+  const stage4 = summary.by_stage["4. Applied"] || 0;
+  const notPursuing = summary.by_stage["Not pursuing"] || 0;
+  $("kpis").innerHTML = [
+    {label:"Total rows", value: summary.total_rows},
+    {label:"Discovered", value: stage1},
+    {label:"Triaged",    value: stage2},
+    {label:"Drafted",    value: stage3},
+    {label:"Applied",    value: stage4},
+    {label:"Not pursuing", value: notPursuing},
+  ].map(k => '<div class="card"><div class="kpi">' + k.value + '<span class="label">' + k.label + '</span></div></div>').join("");
+
+  // Stages bar
+  const total = summary.total_rows || 1;
+  const stages = [
+    ["1. Discovered","s1"],["2. Triaged","s2"],["3. Drafted","s3"],
+    ["4. Applied","s4"],["5. Assessment/OA","s4"],["6. Phone screen","s4"],
+    ["7. Tech interview","s4"],["8. Onsite/Final","s4"],["9. Offer","s4"],
+    ["Signed","s4"],["Rejected","sNot"],["Withdrew","sNot"],["Not pursuing","sNot"],
+  ];
+  const colors = {s1:"#3a4150",s2:"#fbbf24",s3:"#a3e635",s4:"#34d399",sNot:"#a3766e"};
+  $("stages").innerHTML =
+    '<div class="bar">' +
+      stages.map(([name,cls]) => {
+        const v = summary.by_stage[name] || 0;
+        if (v === 0) return "";
+        return '<span style="background:' + colors[cls] + ';width:' + (v / total * 100) + '%" title="' + name + ': ' + v + '"></span>';
+      }).join("") +
+    '</div>' +
+    stages.filter(([n]) => (summary.by_stage[n]||0) > 0).map(([n,cls]) =>
+      '<span class="stage-pill ' + cls + '">' + n + ' · ' + (summary.by_stage[n]||0) + '</span>'
+    ).join(" ");
+
+  // Portals bar
+  const portalEntries = Object.entries(summary.by_portal).sort((a,b)=>b[1]-a[1]);
+  const portalMax = Math.max(1, ...portalEntries.map(e=>e[1]));
+  $("portals").innerHTML = portalEntries.map(([p,n]) =>
+    '<div style="display:flex;align-items:center;gap:8px;margin:4px 0">' +
+      '<div style="width:160px">' + p + '</div>' +
+      '<div style="flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden">' +
+        '<div style="height:100%;width:' + (n/portalMax*100) + '%;background:var(--accent)"></div>' +
+      '</div>' +
+      '<div style="width:50px;text-align:right">' + n + '</div>' +
+    '</div>'
+  ).join("");
+
+  // Drafted table
+  function scoreClass(s){ if(s==null) return "score-low"; if(s>=85) return "score-92"; if(s>=75) return "score-80"; return "score-low"; }
+  function pillVerdict(v){ if(!v) return ""; return '<span class="pill ' + v.toLowerCase() + '">' + v + '</span>'; }
+  function fileChip(r){
+    const items = [];
+    if (r.resume_files > 0) items.push("CV");
+    if (r.cover_letter_files > 0) items.push("CL");
+    return items.length ? items.map(x => '<span class="pill">' + x + '</span>').join("") : '<span class="empty">none</span>';
+  }
+  function row(r, withFiles){
+    return '<tr>' +
+      '<td><a href="' + r.page_url + '" target="_blank">' + (r.application_id || "—") + '</a></td>' +
+      '<td class="score ' + scoreClass(r.match_score) + '">' + (r.match_score ?? "—") + '</td>' +
+      '<td>' + (r.title || "—") + '</td>' +
+      '<td>' + (r.position||[]).join(", ") + '</td>' +
+      '<td>' + (r.country || "—") + '</td>' +
+      '<td>' + pillVerdict(r.recruiter_sim_verdict) + '</td>' +
+      (withFiles ? '<td>' + fileChip(r) + '</td>' : '') +
+    '</tr>';
+  }
+  $("tbl-drafted").innerHTML = summary.top_drafted.length
+    ? summary.top_drafted.map(r => row(r, true)).join("")
+    : '<tr><td colspan="7" class="empty">No Stage-3 rows yet. Run auto-draft.</td></tr>';
+  $("tbl-triaged").innerHTML = summary.top_triaged_pending.length
+    ? summary.top_triaged_pending.map(r => row(r, false)).join("")
+    : '<tr><td colspan="6" class="empty">No Stage-2 backlog.</td></tr>';
+
+  // Sparkline (oldest left → newest right)
+  const days = Object.entries(summary.by_day_last_7).sort((a,b)=>a[0].localeCompare(b[0]));
+  const sparkMax = Math.max(1, ...days.map(d=>d[1]));
+  $("sparkline").innerHTML = days.map(([d,v]) =>
+    '<div title="' + d + ': ' + v + '" style="height:' + Math.max(2, v/sparkMax*100) + '%"></div>'
+  ).join("");
+  $("sparkline-labels").innerHTML = days.map(([d,v]) =>
+    '<span style="display:inline-block;width:14.28%;text-align:center">' + d.slice(5) + ' · <b>' + v + '</b></span>'
+  ).join("");
+
+  // Pace
+  if (s.pace_summary) {
+    const p = s.pace_summary;
+    const wa = p.window_adherence || {};
+    $("pace").innerHTML =
+      '<div><b>Status:</b> <span class="pill ' + (p.status === "alarm" ? "reject" : p.status === "warning" ? "maybe" : "invite") + '">' + p.status.toUpperCase() + '</span></div>' +
+      '<div class="meta">Today: ' + p.applied_today + ' · 7-day avg: ' + p.rolling_7_day_avg_per_day + '/day · target: ' + p.target_per_day + '/day</div>' +
+      '<div class="meta">Last 7d: ' + (p.applied_last_7_days||[]).join(", ") + '</div>' +
+      (wa.adherence_pct !== null && wa.adherence_pct !== undefined ?
+        '<div class="meta">Window adherence: ' + wa.adherence_pct + '% on preferred/acceptable days</div>' :
+        '<div class="meta">Window adherence: ' + (wa.note || "n/a") + '</div>'
+      );
+  } else {
+    $("pace").innerHTML = '<div class="empty">pace-alarm.mjs didn\'t emit JSON.</div>';
+  }
+
+  // Trace
+  const exits = (s.wrapper_trace.exits_today || []);
+  $("trace").innerHTML = exits.length
+    ? '<table><thead><tr><th>Time</th><th>Routine</th><th>Exit</th><th>Contract</th></tr></thead><tbody>' +
+      exits.map(e => '<tr><td>' + e.time.slice(11) + '</td><td>' + e.routine + '</td><td>' + e.exit_code + '</td><td>' + (e.contract_valid === "True" ? "✓" : "✗") + '</td></tr>').join("") +
+      '</tbody></table>'
+    : '<div class="empty">No wrapper-trace entries today.</div>';
+
+  // Stale
+  const stale = s.stale_portals.stale || [];
+  $("stale").innerHTML = stale.length
+    ? stale.map(c => '<div>⚠ <b>' + c.name + '</b> — ' + c.consecutive + ' consec failures · last: <code>' + (c.last_error||"").slice(0,80) + '</code></div>').join("")
+    : '<div class="empty">No stale portals (good).</div>';
+
+})();
+</script>
+</body>
+</html>
